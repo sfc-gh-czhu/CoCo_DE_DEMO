@@ -1,0 +1,9 @@
+manifest_version: 2
+type: DCM_PROJECT
+default_target: 'DEV'
+
+targets:
+  DEV:
+    account_identifier: BK87669
+    project_name: 'COCO_DE_DEMO.DCM.PIPELINE_PROJECT'
+    project_owner: ACCOUNTADMIN

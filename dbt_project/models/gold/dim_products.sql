@@ -79,7 +79,6 @@ SELECT
         WHEN ps.TOTAL_REVENUE > 0     THEN 'ACTIVE'
         ELSE 'NO_SALES'
     END                                                        AS SALES_TIER,
-    p.CREATED_AT,
     CURRENT_TIMESTAMP()                                        AS _LOADED_AT
 FROM {{ ref('stg_products') }} p
 LEFT JOIN product_sales ps ON p.PRODUCT_ID = ps.PRODUCT_ID

@@ -20,9 +20,11 @@ The S3 bucket is `s3://coco-d4bdemo-de/assets/` and uses IAM role `arn:aws:iam::
 
 ---
 
-## Prompt 1: Foundation
+## Prompt 1: Foundation & DCM Project Setup
 
-Create a Snowflake database called COCO_DE_DEMO with three schemas for a medallion architecture: BRONZE for raw data, SILVER for cleaned and validated data, and GOLD for analytics-ready data. Also create a reusable CSV file format in the Bronze schema that handles headers, quoted fields, and common null representations.
+Create a Snowflake database called COCO_DE_DEMO with four schemas: BRONZE for raw data, SILVER for cleaned and validated data, GOLD for analytics-ready data, and DCM for the Database Change Management project. Also create a reusable CSV file format in the Bronze schema that handles headers, quoted fields, and common null representations.
+
+Set up a DCM project registered as COCO_DE_DEMO.DCM.PIPELINE_PROJECT using the Snowflake CLI (`snow dcm create`). Create the local project structure with a manifest.yml and definition files under sources/definitions/. The DCM project will declaratively manage all infrastructure objects (schemas, tables, file formats, tags, tasks, procedures, DMFs, and data quality expectations). Objects not supported by DCM's DEFINE syntax — specifically the storage integration, external stage, CDC streams, and Snowpipe pipes — should be placed in companion scripts (pre_deploy.sql and post_deploy.sql) at the project root. The dbt project remains a separate deployment (hybrid approach).
 
 ---
 
@@ -34,7 +36,7 @@ Create a storage integration for secure access to our S3 bucket at s3://coco-d4b
 
 ## Prompt 3: Bronze Landing Tables
 
-Create 6 Bronze tables to receive the raw CSV data. The tables should match the CSV column structures: customers (with customer_id, first_name, last_name, email, phone, city, state, zip_code, segment, created_at), orders (order_id, customer_id, order_date, status, sales_channel, total_amount), order_items (order_item_id, order_id, product_id, quantity, unit_price, discount), products (product_id, product_name, category, brand, list_price, cost_price, stock_quantity), payments (payment_id, order_id, payment_method, amount, payment_date, status), and shipments (shipment_id, order_id, carrier, ship_date, delivery_date, status).
+Create 6 Bronze tables to receive the raw CSV data. The tables should match the CSV column structures: customers (with customer_id, first_name, last_name, email, phone, city, state, zip_code, segment, created_at), orders (order_id, customer_id, order_date, status, sales_channel, total_amount), order_items (order_item_id, order_id, product_id, quantity, unit_price, discount), products (product_id, product_name, category, subcategory, brand, list_price, cost_price, stock_quantity), payments (payment_id, order_id, payment_method, amount, payment_date, status), and shipments (shipment_id, order_id, carrier, tracking_number, ship_date, delivery_date, status). Enable CHANGE_TRACKING on all tables and set DATA_METRIC_SCHEDULE to 60 minutes. Define these tables in the DCM project's sources/definitions/bronze_tables.sql and deploy via `snow dcm deploy`.
 
 ---
 
@@ -89,7 +91,7 @@ Create 3 validation gate stored procedures that act as quality checkpoints betwe
 
 ## Prompt 9: Task DAG Orchestration
 
-Create an 8-task DAG that orchestrates the entire pipeline end-to-end. The pipeline should be event-driven — it should only run when new data arrives in the Bronze streams, checking every minute. The flow should be:
+Create an 8-task DAG that orchestrates the entire pipeline end-to-end. The pipeline should be event-driven — it should only run when new data arrives in the Bronze streams, checking every minute. All tasks must reside in the same schema (BRONZE) because Snowflake requires DAG predecessors to be in the same schema. The tasks call procedures in their respective schemas. Define the tasks in the DCM project's sources/definitions/tasks.sql. The flow should be:
 
 1. Root task validates Bronze data (Gate 1) and only triggers when streams have new data
 2. Profile all Bronze tables using a Snowpark Python procedure

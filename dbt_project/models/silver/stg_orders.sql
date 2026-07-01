@@ -6,7 +6,7 @@ SELECT
     CUSTOMER_ID,
     ORDER_DATE,
     UPPER(TRIM(STATUS))                                       AS STATUS,
-    LOWER(TRIM(CHANNEL))                                      AS CHANNEL,
+    LOWER(TRIM(SALES_CHANNEL))                                 AS CHANNEL,
     TOTAL_AMOUNT,
     DATEDIFF('day', ORDER_DATE, CURRENT_DATE())               AS DAYS_SINCE_ORDER,
     CASE

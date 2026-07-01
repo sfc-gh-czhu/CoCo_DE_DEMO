@@ -3,10 +3,10 @@ default:
   outputs:
     dev:
       type: snowflake
-      account: SFSEAPAC-BSURESH
-      user: bsuresh
+      account: SFSEAPAC-AU_DEMO70
+      user: czhu
       role: ACCOUNTADMIN
       database: COCO_DE_DEMO
-      warehouse: DEMO_WH
+      warehouse: COMPUTE_WH
       schema: SILVER
       threads: 4

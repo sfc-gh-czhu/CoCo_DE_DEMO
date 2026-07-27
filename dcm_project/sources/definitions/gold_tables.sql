@@ -1,4 +1,4 @@
--- Gold enrichment output tables
+-- Gold enrichment output tables (managed by Snowpark procedures)
 DEFINE TABLE COCO_DE_DEMO.GOLD.CUSTOMER_RFM_SCORES (
     CUSTOMER_ID NUMBER,
     RECENCY_SCORE NUMBER,
@@ -10,9 +10,10 @@ DEFINE TABLE COCO_DE_DEMO.GOLD.CUSTOMER_RFM_SCORES (
 COMMENT = 'RFM scoring for customer segmentation';
 
 DEFINE TABLE COCO_DE_DEMO.GOLD.PIPELINE_RUN_SUMMARY (
-    RUN_TIMESTAMP TIMESTAMP_NTZ,
+    RUN_ID VARCHAR,
     LAYER VARCHAR,
     TABLE_NAME VARCHAR,
-    ROW_COUNT NUMBER
+    ROW_COUNT NUMBER,
+    RUN_TIMESTAMP TIMESTAMP_NTZ
 )
 COMMENT = 'Pipeline execution summary with row counts by layer';

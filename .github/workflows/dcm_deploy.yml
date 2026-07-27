@@ -1,0 +1,79 @@
+name: DCM Deploy
+
+# Triggered when changes to dcm_project/ land on main (i.e., after a PR merge).
+# Uses --alias set to the short commit SHA so each deployment is trackable
+# via `snow dcm list-deployments`.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'dcm_project/**'
+
+jobs:
+  deploy:
+    name: DCM Deploy — AU_DEV
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Snowflake CLI
+        run: pip install snowflake-cli
+
+      - name: Configure Snowflake connection
+        run: |
+          mkdir -p ~/.snowflake
+          cat > ~/.snowflake/connections.toml << 'EOF'
+          [ci]
+          account          = "$SNOWFLAKE_ACCOUNT"
+          user             = "$SNOWFLAKE_USER"
+          private_key_path = "/tmp/sf_key.pem"
+          EOF
+          sed -i "s|\$SNOWFLAKE_ACCOUNT|${{ secrets.SNOWFLAKE_ACCOUNT }}|g" ~/.snowflake/connections.toml
+          sed -i "s|\$SNOWFLAKE_USER|${{ secrets.SNOWFLAKE_USER }}|g" ~/.snowflake/connections.toml
+          printf '%s' "${{ secrets.SNOWFLAKE_PRIVATE_KEY }}" > /tmp/sf_key.pem
+          chmod 600 /tmp/sf_key.pem
+
+      # Run plan first so the deploy log shows exactly what changed.
+      # The plan output is uploaded as an artifact for audit purposes.
+      - name: DCM Plan (pre-deploy verification)
+        working-directory: dcm_project
+        run: |
+          snow dcm plan COCO_DE_DEMO.DCM.PIPELINE_PROJECT \
+            -c ci \
+            --target AU_DEV \
+            --save-output
+
+      - name: Upload plan artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dcm-plan-${{ github.sha }}
+          path: dcm_project/out/plan/plan_result.json
+          retention-days: 30
+
+      - name: DCM Deploy
+        working-directory: dcm_project
+        run: |
+          ALIAS="deploy-$(echo ${{ github.sha }} | head -c 7)"
+          snow dcm deploy COCO_DE_DEMO.DCM.PIPELINE_PROJECT \
+            -c ci \
+            --target AU_DEV \
+            --alias "$ALIAS"
+
+      # Post deployment summary to the commit.
+      - name: Post deployment status
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const sha7 = context.sha.slice(0, 7);
+            const status = '${{ job.status }}';
+            const icon = status === 'success' ? '✅' : '❌';
+            const body = `${icon} DCM Deploy \`deploy-${sha7}\` — ${status}\n\nTarget: **AU_DEV** | Project: \`COCO_DE_DEMO.DCM.PIPELINE_PROJECT\``;
+            await github.rest.repos.createCommitComment({
+              owner: context.repo.owner,
+              repo:  context.repo.repo,
+              commit_sha: context.sha,
+              body
+            });

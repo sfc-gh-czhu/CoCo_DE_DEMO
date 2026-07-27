@@ -74,7 +74,7 @@ st.markdown("""
 # ---------------------------------------------------------------------------
 if st.button("Refresh Data"):
     st.cache_data.clear()
-    st.experimental_rerun()
+    st.rerun()
 
 # ---------------------------------------------------------------------------
 # Session & palette
@@ -106,7 +106,7 @@ def load_tag_references():
         FROM SNOWFLAKE.ACCOUNT_USAGE.TAG_REFERENCES
         WHERE OBJECT_DATABASE = 'COCO_DE_DEMO'
           AND TAG_DATABASE = 'COCO_DE_DEMO'
-          AND TAG_SCHEMA = 'GOVERNANCE'
+          AND TAG_SCHEMA = 'DCM'
         ORDER BY OBJECT_SCHEMA, OBJECT_NAME, TAG_NAME
     """).to_pandas()
 
@@ -318,7 +318,8 @@ with tab2:
     st.markdown("#### Latest DMF Results")
     if not dmf_results_df.empty:
         dmf_results_df['MEASUREMENT_TIME'] = pd.to_datetime(
-            dmf_results_df['MEASUREMENT_TIME'].astype(str).str.strip('"')
+            dmf_results_df['MEASUREMENT_TIME'].astype(str).str.strip('"'),
+            format='ISO8601',
         )
         dmf_results_df['VALUE'] = pd.to_numeric(dmf_results_df['VALUE'], errors='coerce')
 
@@ -486,7 +487,8 @@ with tab4:
 
     if not anomaly_df.empty:
         anomaly_df['DETECTED_AT'] = pd.to_datetime(
-            anomaly_df['DETECTED_AT'].astype(str).str.strip('"')
+            anomaly_df['DETECTED_AT'].astype(str).str.strip('"'),
+            format='ISO8601',
         )
         total = len(anomaly_df)
         by_type = anomaly_df['ANOMALY_TYPE'].value_counts()
@@ -639,7 +641,8 @@ with tab5:
         inv['ROW_COUNT'] = inv['ROW_COUNT'].fillna(0).astype(int)
         inv['SIZE_MB'] = (inv['BYTES'].fillna(0) / (1024 * 1024)).round(2)
         inv['LAST_ALTERED'] = pd.to_datetime(
-            inv['LAST_ALTERED'].astype(str).str.strip('"')
+            inv['LAST_ALTERED'].astype(str).str.strip('"'),
+            format='ISO8601',
         )
         display = inv[['TABLE_SCHEMA', 'TABLE_NAME', 'ROW_COUNT', 'SIZE_MB', 'LAST_ALTERED']]
         display.columns = ['Schema', 'Table', 'Rows', 'Size (MB)', 'Last Altered']
@@ -651,7 +654,7 @@ with tab5:
     st.markdown("#### Bronze Profiling Highlights")
     if not profile_df.empty:
         # Show null percentage metrics
-        null_metrics = profile_df[profile_df['METRIC'] == 'null_pct'].copy()
+        null_metrics = profile_df[profile_df['METRIC'] == 'NULL_PCT'].copy()
         if not null_metrics.empty:
             null_metrics['METRIC_VALUE'] = pd.to_numeric(null_metrics['METRIC_VALUE'], errors='coerce')
             null_high = null_metrics[null_metrics['METRIC_VALUE'] > 0].sort_values(

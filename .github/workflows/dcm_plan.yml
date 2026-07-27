@@ -1,0 +1,93 @@
+name: DCM Plan
+
+# Triggered on any PR targeting main that touches the DCM project files.
+# Runs `snow dcm plan` and posts the result as a PR comment so reviewers
+# can see exactly what will change in Snowflake before approving.
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'dcm_project/**'
+
+jobs:
+  plan:
+    name: DCM Plan — AU_DEV
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write   # required to post PR comments
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Snowflake CLI
+        run: pip install snowflake-cli
+
+      # Write the private key to a temp file so snow CLI can reference it.
+      # The key must be stored as a GitHub Secret in RSA PEM format (passphrase-less).
+      - name: Configure Snowflake connection
+        run: |
+          mkdir -p ~/.snowflake
+          cat > ~/.snowflake/connections.toml << 'EOF'
+          [ci]
+          account          = "$SNOWFLAKE_ACCOUNT"
+          user             = "$SNOWFLAKE_USER"
+          private_key_path = "/tmp/sf_key.pem"
+          EOF
+          # Substitute real values at runtime via env vars
+          sed -i "s|\$SNOWFLAKE_ACCOUNT|${{ secrets.SNOWFLAKE_ACCOUNT }}|g" ~/.snowflake/connections.toml
+          sed -i "s|\$SNOWFLAKE_USER|${{ secrets.SNOWFLAKE_USER }}|g" ~/.snowflake/connections.toml
+          printf '%s' "${{ secrets.SNOWFLAKE_PRIVATE_KEY }}" > /tmp/sf_key.pem
+          chmod 600 /tmp/sf_key.pem
+
+      - name: Run DCM Plan
+        working-directory: dcm_project
+        run: |
+          snow dcm plan COCO_DE_DEMO.DCM.PIPELINE_PROJECT \
+            -c ci \
+            --target AU_DEV \
+            --save-output
+
+      # Parse the plan JSON and post a human-readable summary as a PR comment.
+      - name: Post plan summary as PR comment
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            let body;
+            try {
+              const raw = fs.readFileSync('dcm_project/out/plan/plan_result.json', 'utf8');
+              const result = JSON.parse(raw);
+              if (result.status !== 'SUCCESS') {
+                body = `### DCM Plan — FAILED\n\n\`\`\`\n${result.error ?? 'Unknown error'}\n\`\`\``;
+              } else {
+                const ops = result.ddlChangeLog?.operations ?? [];
+                if (ops.length === 0) {
+                  body = `### DCM Plan — No changes\n\nNo Snowflake infrastructure changes detected.`;
+                } else {
+                  const groups = { CREATE: [], ALTER: [], DROP: [], other: [] };
+                  for (const op of ops) {
+                    const type = op.operationType ?? op.association ?? 'other';
+                    const name = op.objectIdentifier ?? op.objectName ?? JSON.stringify(op.subject ?? '');
+                    const domain = op.objectDomain ?? '';
+                    const entry = `- \`${domain ? domain + ': ' : ''}${name}\``;
+                    (groups[type] ?? groups.other).push(entry);
+                  }
+                  const sections = [];
+                  if (groups.CREATE.length) sections.push(`**CREATE (${groups.CREATE.length})**\n${groups.CREATE.join('\n')}`);
+                  if (groups.ALTER.length)  sections.push(`**ALTER (${groups.ALTER.length})**\n${groups.ALTER.join('\n')}`);
+                  if (groups.DROP.length)   sections.push(`**:warning: DROP (${groups.DROP.length}) — destructive**\n${groups.DROP.join('\n')}`);
+                  if (groups.other.length)  sections.push(`**Other (${groups.other.length})**\n${groups.other.join('\n')}`);
+                  body = `### DCM Plan — ${ops.length} change(s)\n\n${sections.join('\n\n')}`;
+                }
+              }
+            } catch (e) {
+              body = `### DCM Plan — could not read output\n\n\`${e.message}\``;
+            }
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo:  context.repo.repo,
+              issue_number: context.issue.number,
+              body
+            });

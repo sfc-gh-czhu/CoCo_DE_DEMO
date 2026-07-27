@@ -1,9 +1,55 @@
 manifest_version: 2
 type: DCM_PROJECT
-default_target: 'DEV'
+default_target: 'AU_DEV'
 
 targets:
-  DEV:
-    account_identifier: BK87669
+  # --- Australia environments ---
+  AU_DEV:
+    account_identifier: SFSEAPAC-AU_DEMO70
     project_name: 'COCO_DE_DEMO.DCM.PIPELINE_PROJECT'
     project_owner: ACCOUNTADMIN
+    templating_config: 'DEV'
+  AU_STAGING:
+    account_identifier: SFSEAPAC-AU_DEMO70          # same account, different project_name
+    project_name: 'COCO_DE_DEMO.DCM.PIPELINE_PROJECT_STG'
+    project_owner: ACCOUNTADMIN
+    templating_config: 'STAGING'
+  AU_PROD:
+    account_identifier: SFSEAPAC-AU_PROD             # replace with real AU prod identifier
+    project_name: 'COCO_DE_DEMO.DCM.PIPELINE_PROJECT'
+    project_owner: PIPELINE_DEPLOYER
+    templating_config: 'PROD'
+
+  # --- United Kingdom environments ---
+  UK_DEV:
+    account_identifier: SFSEAPAC-UK_DEMO70           # replace with real UK dev identifier
+    project_name: 'COCO_DE_DEMO.DCM.PIPELINE_PROJECT'
+    project_owner: ACCOUNTADMIN
+    templating_config: 'DEV'
+  UK_STAGING:
+    account_identifier: SFSEAPAC-UK_DEMO70           # replace with real UK identifier
+    project_name: 'COCO_DE_DEMO.DCM.PIPELINE_PROJECT_STG'
+    project_owner: ACCOUNTADMIN
+    templating_config: 'STAGING'
+  UK_PROD:
+    account_identifier: SFSEAPAC-UK_PROD             # replace with real UK prod identifier
+    project_name: 'COCO_DE_DEMO.DCM.PIPELINE_PROJECT'
+    project_owner: PIPELINE_DEPLOYER
+    templating_config: 'PROD'
+
+# Jinja variables resolved per environment.
+# Configurations override defaults; defaults apply to any key not overridden.
+templating:
+  defaults:
+    wh_size: 'XSMALL'
+    env_suffix: '_DEV'
+  configurations:
+    DEV:
+      wh_size: 'XSMALL'
+      env_suffix: '_DEV'
+    STAGING:
+      wh_size: 'SMALL'
+      env_suffix: '_STG'
+    PROD:
+      wh_size: 'LARGE'
+      env_suffix: ''

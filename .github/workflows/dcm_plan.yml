@@ -23,19 +23,18 @@ jobs:
       - name: Install Snowflake CLI
         run: pip install snowflake-cli
 
-      # Write private key and build connections.toml using env: variables.
-      # Using printf avoids heredoc quoting edge-cases.
+      # Build connections.toml using a Snowflake PAT (Programmatic Access Token).
+      # Store SNOWFLAKE_ACCOUNT, SNOWFLAKE_USER, and SNOWFLAKE_PAT as GitHub Secrets.
+      # Generate a PAT in Snowflake: Admin → Security → Programmatic access tokens → + Token
       - name: Configure Snowflake connection
         env:
           SF_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
           SF_USER: ${{ secrets.SNOWFLAKE_USER }}
-          SF_PRIVATE_KEY: ${{ secrets.SNOWFLAKE_PRIVATE_KEY }}
+          SF_PAT: ${{ secrets.SNOWFLAKE_PAT }}
         run: |
-          printf '%s' "$SF_PRIVATE_KEY" > /tmp/sf_key.pem
-          chmod 600 /tmp/sf_key.pem
           mkdir -p ~/.snowflake
-          printf '[ci]\naccount = "%s"\nuser = "%s"\nauthenticator = "SNOWFLAKE_JWT"\nprivate_key_path = "/tmp/sf_key.pem"\n' \
-            "$SF_ACCOUNT" "$SF_USER" > ~/.snowflake/connections.toml
+          printf '[ci]\naccount = "%s"\nuser = "%s"\nauthenticator = "PROGRAMMATIC_ACCESS_TOKEN"\ntoken = "%s"\n' \
+            "$SF_ACCOUNT" "$SF_USER" "$SF_PAT" > ~/.snowflake/connections.toml
           chmod 0600 ~/.snowflake/connections.toml
 
       - name: Run DCM Plan

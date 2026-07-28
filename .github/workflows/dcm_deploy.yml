@@ -8,6 +8,7 @@ on:
     branches: [main]
     paths:
       - 'dcm_project/**'
+  workflow_dispatch:  # allows manual trigger from GitHub UI or gh CLI
 
 jobs:
   deploy:
@@ -36,6 +37,7 @@ jobs:
           mkdir -p ~/.snowflake
           printf '[ci]\naccount = "%s"\nuser = "%s"\nprivate_key_path = "/tmp/sf_key.pem"\n' \
             "$SF_ACCOUNT" "$SF_USER" > ~/.snowflake/connections.toml
+          chmod 0600 ~/.snowflake/connections.toml
 
       # Run plan first so the deploy log shows exactly what changed.
       # The plan output is uploaded as an artifact for audit purposes.

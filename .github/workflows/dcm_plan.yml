@@ -36,6 +36,7 @@ jobs:
           mkdir -p ~/.snowflake
           printf '[ci]\naccount = "%s"\nuser = "%s"\nprivate_key_path = "/tmp/sf_key.pem"\n' \
             "$SF_ACCOUNT" "$SF_USER" > ~/.snowflake/connections.toml
+          chmod 0600 ~/.snowflake/connections.toml
 
       - name: Run DCM Plan
         working-directory: dcm_project

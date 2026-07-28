@@ -23,22 +23,19 @@ jobs:
       - name: Install Snowflake CLI
         run: pip install snowflake-cli
 
-      # Write the private key to a temp file so snow CLI can reference it.
-      # The key must be stored as a GitHub Secret in RSA PEM format (passphrase-less).
+      # Write private key and build connections.toml using env: variables.
+      # Using printf avoids heredoc quoting edge-cases.
       - name: Configure Snowflake connection
+        env:
+          SF_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+          SF_USER: ${{ secrets.SNOWFLAKE_USER }}
+          SF_PRIVATE_KEY: ${{ secrets.SNOWFLAKE_PRIVATE_KEY }}
         run: |
-          mkdir -p ~/.snowflake
-          cat > ~/.snowflake/connections.toml << 'EOF'
-          [ci]
-          account          = "$SNOWFLAKE_ACCOUNT"
-          user             = "$SNOWFLAKE_USER"
-          private_key_path = "/tmp/sf_key.pem"
-          EOF
-          # Substitute real values at runtime via env vars
-          sed -i "s|\$SNOWFLAKE_ACCOUNT|${{ secrets.SNOWFLAKE_ACCOUNT }}|g" ~/.snowflake/connections.toml
-          sed -i "s|\$SNOWFLAKE_USER|${{ secrets.SNOWFLAKE_USER }}|g" ~/.snowflake/connections.toml
-          printf '%s' "${{ secrets.SNOWFLAKE_PRIVATE_KEY }}" > /tmp/sf_key.pem
+          printf '%s' "$SF_PRIVATE_KEY" > /tmp/sf_key.pem
           chmod 600 /tmp/sf_key.pem
+          mkdir -p ~/.snowflake
+          printf '[ci]\naccount = "%s"\nuser = "%s"\nprivate_key_path = "/tmp/sf_key.pem"\n' \
+            "$SF_ACCOUNT" "$SF_USER" > ~/.snowflake/connections.toml
 
       - name: Run DCM Plan
         working-directory: dcm_project

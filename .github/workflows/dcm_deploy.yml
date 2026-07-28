@@ -13,6 +13,8 @@ jobs:
   deploy:
     name: DCM Deploy — AU_DEV
     runs-on: ubuntu-latest
+    permissions:
+      contents: write   # required by createCommitComment in "Post deployment status"
 
     steps:
       - name: Checkout code
@@ -21,19 +23,19 @@ jobs:
       - name: Install Snowflake CLI
         run: pip install snowflake-cli
 
+      # Write private key and build connections.toml using env: variables.
+      # Using printf avoids heredoc quoting edge-cases.
       - name: Configure Snowflake connection
+        env:
+          SF_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+          SF_USER: ${{ secrets.SNOWFLAKE_USER }}
+          SF_PRIVATE_KEY: ${{ secrets.SNOWFLAKE_PRIVATE_KEY }}
         run: |
-          mkdir -p ~/.snowflake
-          cat > ~/.snowflake/connections.toml << 'EOF'
-          [ci]
-          account          = "$SNOWFLAKE_ACCOUNT"
-          user             = "$SNOWFLAKE_USER"
-          private_key_path = "/tmp/sf_key.pem"
-          EOF
-          sed -i "s|\$SNOWFLAKE_ACCOUNT|${{ secrets.SNOWFLAKE_ACCOUNT }}|g" ~/.snowflake/connections.toml
-          sed -i "s|\$SNOWFLAKE_USER|${{ secrets.SNOWFLAKE_USER }}|g" ~/.snowflake/connections.toml
-          printf '%s' "${{ secrets.SNOWFLAKE_PRIVATE_KEY }}" > /tmp/sf_key.pem
+          printf '%s' "$SF_PRIVATE_KEY" > /tmp/sf_key.pem
           chmod 600 /tmp/sf_key.pem
+          mkdir -p ~/.snowflake
+          printf '[ci]\naccount = "%s"\nuser = "%s"\nprivate_key_path = "/tmp/sf_key.pem"\n' \
+            "$SF_ACCOUNT" "$SF_USER" > ~/.snowflake/connections.toml
 
       # Run plan first so the deploy log shows exactly what changed.
       # The plan output is uploaded as an artifact for audit purposes.

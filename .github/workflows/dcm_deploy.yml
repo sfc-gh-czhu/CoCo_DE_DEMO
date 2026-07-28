@@ -35,7 +35,7 @@ jobs:
           printf '%s' "$SF_PRIVATE_KEY" > /tmp/sf_key.pem
           chmod 600 /tmp/sf_key.pem
           mkdir -p ~/.snowflake
-          printf '[ci]\naccount = "%s"\nuser = "%s"\nprivate_key_path = "/tmp/sf_key.pem"\n' \
+          printf '[ci]\naccount = "%s"\nuser = "%s"\nauthenticator = "SNOWFLAKE_JWT"\nprivate_key_path = "/tmp/sf_key.pem"\n' \
             "$SF_ACCOUNT" "$SF_USER" > ~/.snowflake/connections.toml
           chmod 0600 ~/.snowflake/connections.toml
 

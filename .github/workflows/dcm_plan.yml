@@ -14,34 +14,29 @@ jobs:
     name: DCM Plan — AU_DEV
     runs-on: ubuntu-latest
     permissions:
-      pull-requests: write   # required to post PR comments
+      id-token: write       # required for OIDC token exchange with Snowflake
+      contents: read        # required by actions/checkout
+      pull-requests: write  # required to post PR comments
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install Snowflake CLI
-        run: pip install snowflake-cli
-
-      # Build connections.toml using a Snowflake PAT (Programmatic Access Token).
-      # Store SNOWFLAKE_ACCOUNT, SNOWFLAKE_USER, and SNOWFLAKE_PAT as GitHub Secrets.
-      # Generate a PAT in Snowflake: Admin → Security → Programmatic access tokens → + Token
-      - name: Configure Snowflake connection
+      # snowflake-actions@v2 installs the Snowflake CLI and exchanges the GitHub
+      # OIDC token for a Snowflake session. No secrets needed — only SNOWFLAKE_ACCOUNT.
+      - name: Set up Snowflake CLI (OIDC)
+        uses: snowflakedb/snowflake-actions@v2
+        with:
+          use-oidc: true
         env:
-          SF_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
-          SF_USER: ${{ secrets.SNOWFLAKE_USER }}
-          SF_PAT: ${{ secrets.SNOWFLAKE_PAT }}
-        run: |
-          mkdir -p ~/.snowflake
-          printf '[ci]\naccount = "%s"\nuser = "%s"\nauthenticator = "PROGRAMMATIC_ACCESS_TOKEN"\ntoken = "%s"\n' \
-            "$SF_ACCOUNT" "$SF_USER" "$SF_PAT" > ~/.snowflake/connections.toml
-          chmod 0600 ~/.snowflake/connections.toml
+          SNOWFLAKE_ACCOUNT: ${{ vars.SNOWFLAKE_ACCOUNT }}
+          SNOWFLAKE_USER: ${{ vars.SNOWFLAKE_USER }}
 
       - name: Run DCM Plan
         working-directory: dcm_project
         run: |
           snow dcm plan COCO_DE_DEMO.DCM.PIPELINE_PROJECT \
-            -c ci \
+            -x \
             --target AU_DEV \
             --save-output
 
